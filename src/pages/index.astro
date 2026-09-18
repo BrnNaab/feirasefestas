@@ -96,7 +96,7 @@ const { data: eventos, error } = await supabase
                   </span>
                 </div>
 
-                <!-- Botões de GPS/Navegação (se houver coordenadas) -->
+                <!-- Botões de GPS/Navegação -->
                 {(evento.latitude && evento.longitude) && (
                   <div class="pt-2 flex gap-2">
                     <a 
@@ -117,6 +117,23 @@ const { data: eventos, error } = await supabase
                     </a>
                   </div>
                 )}
+
+                <!-- SISTEMA DE REAÇÕES (THUMBS) E REPORTAR -->
+                <div class="flex items-center justify-between border-t border-gray-100 pt-3 mt-2 text-xs">
+                  <div class="flex items-center gap-2">
+                    <button data-id={evento.id} class="btn-like flex items-center gap-1 bg-gray-100 hover:bg-green-50 hover:text-green-700 text-gray-700 px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer">
+                      👍 <span id={`likes-${evento.id}`}>{evento.likes_count || 0}</span>
+                    </button>
+                    <button data-id={evento.id} class="btn-dislike flex items-center gap-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-700 px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer">
+                      👎 <span id={`dislikes-${evento.id}`}>{evento.dislikes_count || 0}</span>
+                    </button>
+                  </div>
+
+                  <button data-id={evento.id} data-titulo={evento.titulo} class="btn-reportar text-gray-400 hover:text-red-600 flex items-center gap-1 font-medium transition-all cursor-pointer">
+                    🚨 Reportar
+                  </button>
+                </div>
+
               </div>
             </div>
           </article>
@@ -124,4 +141,145 @@ const { data: eventos, error } = await supabase
       </div>
     )}
   </section>
+
+  <!-- MODAL DE REPORTAR / DENUNCIAR -->
+  <div id="modal-reporte" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-gray-100 relative">
+      <button id="btn-fechar-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg font-bold cursor-pointer">✕</button>
+      
+      <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+        🚨 Reportar Evento
+      </h3>
+      <p id="modal-evento-titulo" class="text-xs text-amber-700 font-semibold mb-4"></p>
+
+      <form id="form-reporte" class="space-y-4">
+        <input type="hidden" id="reporte-evento-id" name="evento_id" />
+        
+        <div>
+          <label for="reporte-email" class="block text-xs font-bold text-gray-700 uppercase mb-1">O seu Email *</label>
+          <input type="email" id="reporte-email" name="email" required placeholder="seuemail@exemplo.com" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500" />
+        </div>
+
+        <div>
+          <label for="reporte-telefone" class="block text-xs font-bold text-gray-700 uppercase mb-1">Contacto Telefónico (Opcional)</label>
+          <input type="tel" id="reporte-telefone" name="telefone" placeholder="912 345 678" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500" />
+        </div>
+
+        <div>
+          <label for="reporte-descricao" class="block text-xs font-bold text-gray-700 uppercase mb-1">Motivo / Descrição da Denúncia *</label>
+          <textarea id="reporte-descricao" name="descricao" rows="3" required placeholder="Ex: Evento cancelado, dados incorretos ou anúncio enganoso..." class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+        </div>
+
+        <div id="reporte-msg" class="hidden text-xs p-2.5 rounded-lg"></div>
+
+        <button type="submit" id="btn-enviar-reporte" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer">
+          Enviar Denúncia
+        </button>
+      </form>
+    </div>
+  </div>
 </Layout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+
+  // 1. Thumbs Up (Gostar)
+  document.querySelectorAll('.btn-like').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const button = e.currentTarget as HTMLButtonElement;
+      const id = button.getAttribute('data-id');
+      if (!id) return;
+
+      if (localStorage.getItem(`voted_${id}`)) {
+        alert('Já reagiu a este evento!');
+        return;
+      }
+
+      const { error } = await supabase.rpc('increment_likes', { row_id: id });
+      if (!error) {
+        const counter = document.getElementById(`likes-${id}`);
+        if (counter) counter.innerText = (parseInt(counter.innerText) + 1).toString();
+        localStorage.setItem(`voted_${id}`, 'like');
+        button.classList.add('bg-green-100', 'text-green-800');
+      }
+    });
+  });
+
+  // 2. Thumbs Down (Não Gostar)
+  document.querySelectorAll('.btn-dislike').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const button = e.currentTarget as HTMLButtonElement;
+      const id = button.getAttribute('data-id');
+      if (!id) return;
+
+      if (localStorage.getItem(`voted_${id}`)) {
+        alert('Já reagiu a este evento!');
+        return;
+      }
+
+      const { error } = await supabase.rpc('increment_dislikes', { row_id: id });
+      if (!error) {
+        const counter = document.getElementById(`dislikes-${id}`);
+        if (counter) counter.innerText = (parseInt(counter.innerText) + 1).toString();
+        localStorage.setItem(`voted_${id}`, 'dislike');
+        button.classList.add('bg-red-100', 'text-red-800');
+      }
+    });
+  });
+
+  // 3. Abrir / Fechar Modal de Reporte
+  const modal = document.getElementById('modal-reporte');
+  const modalTitulo = document.getElementById('modal-evento-titulo');
+  const inputEventoId = document.getElementById('reporte-evento-id') as HTMLInputElement;
+  const formReporte = document.getElementById('form-reporte') as HTMLFormElement;
+  const msgReporte = document.getElementById('reporte-msg');
+
+  document.querySelectorAll('.btn-reportar').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const button = e.currentTarget as HTMLButtonElement;
+      const id = button.getAttribute('data-id');
+      const titulo = button.getAttribute('data-titulo');
+
+      if (inputEventoId) inputEventoId.value = id || '';
+      if (modalTitulo) modalTitulo.innerText = `Evento: ${titulo}`;
+      if (msgReporte) msgReporte.classList.add('hidden');
+      formReporte?.reset();
+      modal?.classList.remove('hidden');
+    });
+  });
+
+  document.getElementById('btn-fechar-modal')?.addEventListener('click', () => {
+    modal?.classList.add('hidden');
+  });
+
+  // 4. Submeter Form de Reporte
+  formReporte?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btnSubmit = document.getElementById('btn-enviar-reporte') as HTMLButtonElement;
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = 'A enviar denúncia...';
+
+    const formData = new FormData(formReporte);
+    const evento_id = formData.get('evento_id') as string;
+    const email = formData.get('email') as string;
+    const telefone = formData.get('telefone') as string || null;
+    const descricao = formData.get('descricao') as string;
+
+    const { error } = await supabase.from('reportes').insert([{ evento_id, email, telefone, descricao }]);
+
+    if (error) {
+      msgReporte!.innerText = 'Erro ao enviar denúncia: ' + error.message;
+      msgReporte!.className = 'text-xs p-2.5 rounded-lg bg-red-50 text-red-700 block';
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = 'Enviar Denúncia';
+    } else {
+      msgReporte!.innerText = 'Denúncia enviada com sucesso. Obrigado pelo aviso!';
+      msgReporte!.className = 'text-xs p-2.5 rounded-lg bg-green-50 text-green-800 block';
+      setTimeout(() => {
+        modal?.classList.add('hidden');
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = 'Enviar Denúncia';
+      }, 2000);
+    }
+  });
+</script>
