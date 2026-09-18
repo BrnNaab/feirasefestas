@@ -1,16 +1,12 @@
 {
   "name": "feirasefestas",
-  "main": "@astrojs/cloudflare/entrypoints/server",
+  "main": "./dist/_worker.js/index.js",
   "compatibility_date": "2026-09-18",
   "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public"
+    "nodejs_compat"
   ],
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist"
-  },
-  "observability": {
-    "enabled": true
   }
 }
