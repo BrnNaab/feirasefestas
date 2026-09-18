@@ -1,0 +1,326 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Painel de Administração - Feiras e Festas">
+  <div class="max-w-5xl mx-auto my-6">
+
+    <!-- FORMULÁRIO DE LOGIN (Visível se não estiver autenticado) -->
+    <div id="seccao-login" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+      <div class="text-center mb-6">
+        <span class="text-4xl block mb-2">🔐</span>
+        <h1 class="text-2xl font-extrabold text-gray-900">Área Reservada Admin</h1>
+        <p class="text-xs text-gray-500 mt-1">Inicie sessão para moderar eventos e gerir anunciantes.</p>
+      </div>
+
+      <div id="login-erro" class="hidden p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg mb-4 text-center"></div>
+
+      <form id="form-login" class="space-y-4">
+        <div>
+          <label for="login-email" class="block text-xs font-bold text-gray-700 uppercase mb-1">Email de Admin</label>
+          <input type="email" id="login-email" required placeholder="admin@feirasefestas.pt" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-amber-500 outline-none" />
+        </div>
+
+        <div>
+          <label for="login-password" class="block text-xs font-bold text-gray-700 uppercase mb-1">Palavra-passe</label>
+          <input type="password" id="login-password" required placeholder="••••••••" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-amber-500 outline-none" />
+        </div>
+
+        <button type="submit" id="btn-login" class="w-full py-3 bg-amber-500 text-white font-bold rounded-xl shadow-md hover:bg-amber-600 transition-all text-sm cursor-pointer">
+          Entrar no Painel
+        </button>
+      </form>
+    </div>
+
+    <!-- PAINEL PRINCIPAL DE ADMIN (Visível após login) -->
+    <div id="seccao-admin" class="hidden space-y-6">
+      
+      <!-- Cabeçalho do Painel -->
+      <div class="bg-gray-900 text-white p-6 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div>
+          <h1 class="text-xl font-bold flex items-center gap-2">
+            <span>🛡️</span> Painel de Moderação & Gestão
+          </h1>
+          <p class="text-xs text-gray-400 mt-0.5" id="user-email-display"></p>
+        </div>
+
+        <button id="btn-logout" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-lg border border-gray-700 transition-all cursor-pointer">
+          Terminar Sessão
+        </button>
+      </div>
+
+      <!-- Filtros / Separadores -->
+      <div class="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
+        <button id="tab-pendente" class="tab-btn px-4 py-2 text-xs font-bold rounded-lg bg-amber-500 text-white shadow-sm cursor-pointer">
+          ⏳ Pendentes (<span id="count-pendente">0</span>)
+        </button>
+        <button id="tab-aprovado" class="tab-btn px-4 py-2 text-xs font-bold rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer">
+          ✅ Aprovados (<span id="count-aprovado">0</span>)
+        </button>
+        <button id="tab-inativo" class="tab-btn px-4 py-2 text-xs font-bold rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer">
+          🚫 Suspensos / Rejeitados (<span id="count-inativo">0</span>)
+        </button>
+        <button id="tab-denunciados" class="tab-btn px-4 py-2 text-xs font-bold rounded-lg bg-red-100 text-red-800 hover:bg-red-200 cursor-pointer">
+          🚨 Denunciados (<span id="count-denunciados">0</span>)
+        </button>
+      </div>
+
+      <!-- Contentor da Lista de Eventos -->
+      <div id="lista-eventos-admin" class="space-y-4">
+        <div class="text-center py-12 text-gray-400 text-sm">
+          A carregar eventos...
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+
+  const seccaoLogin = document.getElementById('seccao-login');
+  const seccaoAdmin = document.getElementById('seccao-admin');
+  const formLogin = document.getElementById('form-login') as HTMLFormElement;
+  const loginErro = document.getElementById('login-erro');
+  const btnLogin = document.getElementById('btn-login') as HTMLButtonElement;
+  const btnLogout = document.getElementById('btn-logout');
+  const userEmailDisplay = document.getElementById('user-email-display');
+  const containerEventos = document.getElementById('lista-eventos-admin');
+
+  let abaAtiva = 'pendente';
+  let todosEventos: any[] = [];
+
+  // 1. Verificar Estado da Sessão ao Carregar
+  async function checarSessao() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      seccaoLogin?.classList.add('hidden');
+      seccaoAdmin?.classList.remove('hidden');
+      if (userEmailDisplay) userEmailDisplay.innerText = session.user.email || '';
+      carregarEventos();
+    } else {
+      seccaoLogin?.classList.remove('hidden');
+      seccaoAdmin?.classList.add('hidden');
+    }
+  }
+
+  // 2. Executar Login
+  formLogin?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginErro?.classList.add('hidden');
+    btnLogin.disabled = true;
+    btnLogin.innerText = 'A autenticar...';
+
+    const email = (document.getElementById('login-email') as HTMLInputElement).value;
+    const password = (document.getElementById('login-password') as HTMLInputElement).value;
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      loginErro!.innerText = 'Falha no login: ' + error.message;
+      loginErro?.classList.remove('hidden');
+      btnLogin.disabled = false;
+      btnLogin.innerText = 'Entrar no Painel';
+    } else {
+      checarSessao();
+    }
+  });
+
+  // 3. Executar Logout
+  btnLogout?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    checarSessao();
+  });
+
+  // 4. Carregar Eventos juntamente com os Reportes/Denúncias
+  async function carregarEventos() {
+    containerEventos!.innerHTML = '<div class="text-center py-12 text-gray-400 text-sm">A carregar eventos...</div>';
+
+    const { data, error } = await supabase
+      .from('eventos')
+      .select('*, reportes(*)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      containerEventos!.innerHTML = `<div class="p-4 bg-red-50 text-red-700 text-sm rounded-xl">Erro ao carregar eventos: ${error.message}</div>`;
+      return;
+    }
+
+    todosEventos = data || [];
+    atualizarContadores();
+    renderizarLista();
+  }
+
+  // 5. Contadores de Separadores
+  function atualizarContadores() {
+    const countPendente = todosEventos.filter(e => e.status === 'pendente').length;
+    const countAprovado = todosEventos.filter(e => e.status === 'aprovado').length;
+    const countInativo = todosEventos.filter(e => e.status === 'suspenso' || e.status === 'rejeitado').length;
+    const countDenunciados = todosEventos.filter(e => e.reportes && e.reportes.length > 0).length;
+
+    document.getElementById('count-pendente')!.innerText = countPendente.toString();
+    document.getElementById('count-aprovado')!.innerText = countAprovado.toString();
+    document.getElementById('count-inativo')!.innerText = countInativo.toString();
+    document.getElementById('count-denunciados')!.innerText = countDenunciados.toString();
+  }
+
+  // 6. Mudar de Separador
+  document.getElementById('tab-pendente')?.addEventListener('click', () => mudarTab('pendente'));
+  document.getElementById('tab-aprovado')?.addEventListener('click', () => mudarTab('aprovado'));
+  document.getElementById('tab-inativo')?.addEventListener('click', () => mudarTab('inativo'));
+  document.getElementById('tab-denunciados')?.addEventListener('click', () => mudarTab('denunciados'));
+
+  function mudarTab(tab: string) {
+    abaAtiva = tab;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('bg-amber-500', 'bg-red-600', 'text-white');
+      btn.classList.add('bg-gray-200', 'text-gray-700');
+    });
+
+    const btnAtivo = document.getElementById(`tab-${tab}`);
+    btnAtivo?.classList.remove('bg-gray-200', 'text-gray-700');
+    
+    if (tab === 'denunciados') {
+      btnAtivo?.classList.add('bg-red-600', 'text-white');
+    } else {
+      btnAtivo?.classList.add('bg-amber-500', 'text-white');
+    }
+
+    renderizarLista();
+  }
+
+  // 7. Renderizar Lista Filtrada
+  function renderizarLista() {
+    let filtrados = todosEventos.filter(e => {
+      if (abaAtiva === 'pendente') return e.status === 'pendente';
+      if (abaAtiva === 'aprovado') return e.status === 'aprovado';
+      if (abaAtiva === 'inativo') return e.status === 'suspenso' || e.status === 'rejeitado';
+      if (abaAtiva === 'denunciados') return e.reportes && e.reportes.length > 0;
+      return false;
+    });
+
+    if (filtrados.length === 0) {
+      containerEventos!.innerHTML = '<div class="bg-white p-8 rounded-xl border border-gray-200 text-center text-gray-500 text-sm">Nenhum evento encontrado nesta categoria.</div>';
+      return;
+    }
+
+    containerEventos!.innerHTML = filtrados.map(e => {
+      const temReportes = e.reportes && e.reportes.length > 0;
+
+      return `
+      <div class="bg-white p-6 rounded-2xl border ${temReportes ? 'border-red-300 ring-1 ring-red-300' : 'border-gray-200'} shadow-sm flex flex-col md:flex-row justify-between gap-6">
+        <div class="space-y-3 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold px-2.5 py-0.5 rounded bg-gray-100 text-gray-800 uppercase">${e.categoria}</span>
+            ${e.destaque ? '<span class="text-xs font-bold px-2 py-0.5 rounded bg-amber-500 text-white">⭐ Destaque Paid</span>' : ''}
+            <span class="text-xs font-semibold px-2 py-0.5 rounded ${e.status === 'aprovado' ? 'bg-green-100 text-green-800' : e.status === 'pendente' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}">${e.status.toUpperCase()}</span>
+            
+            <!-- REAÇÕES PÚBLICAS DO EVENTO -->
+            <span class="ml-auto text-xs font-medium px-2.5 py-0.5 bg-gray-100 text-gray-700 rounded-full flex items-center gap-2">
+              <span>👍 ${e.likes_count || 0}</span>
+              <span>👎 ${e.dislikes_count || 0}</span>
+            </span>
+          </div>
+
+          <h3 class="text-lg font-bold text-gray-900">${e.titulo}</h3>
+          <p class="text-xs text-gray-600 line-clamp-2">${e.descricao}</p>
+
+          <div class="text-xs text-gray-500 space-y-1 pt-1">
+            <p>📍 <strong>Local:</strong> ${e.localizacao_nome} (${e.concelho}, ${e.distrito})</p>
+            <p>📅 <strong>Início:</strong> ${new Date(e.data_inicio).toLocaleString('pt-PT')} | <strong>Entrada:</strong> ${e.tipo_entrada}</p>
+            <p>📞 <strong>Contacto Público:</strong> ${e.contacto_organizador || 'N/D'}</p>
+          </div>
+
+          <!-- CAIXA RESERVADA DO ANUNCIANTE (MONETIZAÇÃO) -->
+          <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 mt-3">
+            <p class="font-bold mb-1 flex items-center gap-1">👤 Contacto do Anunciante (Privado):</p>
+            <p><strong>Nome:</strong> ${e.anunciante_nome} | <strong>Email:</strong> ${e.anunciante_email} | <strong>Telefone:</strong> ${e.anunciante_telefone || 'Não indicado'}</p>
+          </div>
+
+          <!-- CAIXA DE DENÚNCIAS / REPORTES -->
+          ${temReportes ? `
+            <div class="bg-red-50 p-4 rounded-xl border border-red-200 text-xs text-red-900 mt-3 space-y-2">
+              <p class="font-bold flex items-center gap-1 text-red-800">
+                🚨 Denúncias Recebidas (${e.reportes.length}):
+              </p>
+              ${e.reportes.map((rep: any) => `
+                <div class="bg-white p-2.5 rounded-lg border border-red-100 shadow-2xs space-y-1">
+                  <p><strong>De:</strong> ${rep.email} ${rep.telefone ? `(${rep.telefone})` : ''} — <span class="text-gray-400">${new Date(rep.created_at).toLocaleDateString('pt-PT')}</span></p>
+                  <p class="text-red-700 italic">"${rep.descricao}"</p>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- AÇÕES DO ADMIN -->
+        <div class="flex flex-row md:flex-col justify-end gap-2 min-w-[160px] border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6">
+          ${e.status !== 'aprovado' ? `
+            <button data-id="${e.id}" data-acao="aprovar" class="btn-acao w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition-all cursor-pointer">
+              ✅ Aprovar
+            </button>
+          ` : ''}
+
+          ${e.status === 'aprovado' ? `
+            <button data-id="${e.id}" data-acao="suspender" class="btn-acao w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-all cursor-pointer">
+              ⏸️ Suspender
+            </button>
+          ` : ''}
+
+          <button data-id="${e.id}" data-destaque="${!e.destaque}" data-acao="toggle-destaque" class="btn-acao w-full py-2 ${e.destaque ? 'bg-gray-700 text-white' : 'bg-amber-100 text-amber-900 border border-amber-300'} font-bold text-xs rounded-lg transition-all cursor-pointer">
+            ${e.destaque ? '⭐ Remover Destaque' : '⭐ Tornar Destaque'}
+          </button>
+
+          ${e.status !== 'rejeitado' ? `
+            <button data-id="${e.id}" data-acao="rejeitar" class="btn-acao w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs rounded-lg transition-all cursor-pointer">
+              ❌ Rejeitar
+            </button>
+          ` : ''}
+
+          <button data-id="${e.id}" data-acao="apagar" class="btn-acao w-full py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-lg transition-all cursor-pointer mt-auto">
+            🗑️ Apagar
+          </button>
+        </div>
+      </div>
+      `;
+    }).join('');
+
+    // Adicionar eventos aos botões de ação
+    document.querySelectorAll('.btn-acao').forEach(btn => {
+      btn.addEventListener('click', executarAcao);
+    });
+  }
+
+  // 8. Executar Ações do Admin
+  async function executarAcao(evt: Event) {
+    const target = evt.currentTarget as HTMLButtonElement;
+    const id = target.getAttribute('data-id');
+    const acao = target.getAttribute('data-acao');
+
+    if (!id) return;
+
+    if (acao === 'aprovar') {
+      await supabase.from('eventos').update({ status: 'aprovado' }).eq('id', id);
+    } else if (acao === 'suspender') {
+      await supabase.from('eventos').update({ status: 'suspenso' }).eq('id', id);
+    } else if (acao === 'rejeitar') {
+      await supabase.from('eventos').update({ status: 'rejeitado' }).eq('id', id);
+    } else if (acao === 'toggle-destaque') {
+      const novoDestaque = target.getAttribute('data-destaque') === 'true';
+      await supabase.from('eventos').update({ status: 'aprovado', destaque: novoDestaque }).eq('id', id);
+    } else if (acao === 'apagar') {
+      if (confirm('Tem a certeza que deseja apagar este evento definitivamente?')) {
+        await supabase.from('eventos').delete().eq('id', id);
+      } else {
+        return;
+      }
+    }
+
+    carregarEventos();
+  }
+
+  // Inicializar
+  checarSessao();
+</script>
