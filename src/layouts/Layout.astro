@@ -1,0 +1,53 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Descubra as melhores feiras, mercados, festas e eventos locais em Portugal." } = Astro.props;
+---
+
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} | Feiras e Festas</title>
+  </head>
+  <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col font-sans">
+    
+    <!-- Cabeçalho / Navegação -->
+    <header class="bg-amber-500 text-white shadow-md sticky top-0 z-50">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+        <a href="/" class="text-xl font-bold flex items-center gap-2 hover:opacity-90">
+          <span class="text-2xl">🎪</span> 
+          <span>Feiras<span class="text-amber-200">&</span>Festas</span>
+        </a>
+        <nav class="flex items-center gap-3 text-sm font-medium">
+          <a href="/" class="hover:underline px-2 py-1">Início</a>
+          <a href="/submeter" class="bg-white text-amber-700 px-3 py-1.5 rounded-lg font-semibold shadow-sm hover:bg-amber-50 transition-all">
+            + Submeter Evento
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6">
+      <slot />
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="bg-gray-800 text-gray-300 py-6 text-center text-sm mt-auto">
+      <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <p>&copy; {new Date().getFullYear()} feirasefestas.pt — Todos os direitos reservados.</p>
+        <div class="flex gap-4 text-xs text-gray-400">
+          <a href="/admin" class="hover:underline">Área Reservada</a>
+        </div>
+      </div>
+    </footer>
+
+  </body>
+</html>
