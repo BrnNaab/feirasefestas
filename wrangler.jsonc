@@ -1,4 +1,5 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "feirasefestas",
   "main": "./dist/_worker.js/index.js",
   "compatibility_date": "2026-09-18",
