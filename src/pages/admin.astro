@@ -25,7 +25,7 @@ import Layout from '../layouts/Layout.astro';
       </form>
     </div>
 
-    <!-- PAINEL DE ADMINISTRAÇÃO (Escondido por padrão) -->
+    <!-- PAINEL DE ADMINISTRAÇÃO -->
     <div id="admin-dashboard" class="hidden space-y-6">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100 gap-4">
         <div>
@@ -37,22 +37,97 @@ import Layout from '../layouts/Layout.astro';
         </button>
       </div>
 
-      <!-- SEPARADORES -->
-      <div class="flex border-b border-gray-200 gap-4">
-        <button id="tab-pendentes" class="py-2 px-4 border-b-2 border-indigo-600 font-semibold text-indigo-600 text-sm">
+      <!-- SEPARADORES COM CONTADORES -->
+      <div class="flex border-b border-gray-200 gap-2 sm:gap-4 overflow-x-auto">
+        <button id="tab-pendentes" class="py-3 px-4 border-b-2 border-indigo-600 font-semibold text-indigo-600 text-sm whitespace-nowrap">
           ⏳ Pendentes (<span id="count-pendentes">0</span>)
         </button>
-        <button id="tab-aprovados" class="py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 text-sm">
+        <button id="tab-aprovados" class="py-3 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">
           ✅ Aprovados (<span id="count-aprovados">0</span>)
         </button>
-        <button id="tab-reportes" class="py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 text-sm">
-          🚩 Denúncias (<span id="count-reportes">0</span>)
+        <button id="tab-rejeitados" class="py-3 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">
+          🚫 Rejeitados / Banidos (<span id="count-rejeitados">0</span>)
         </button>
       </div>
 
       <!-- LISTA DE CONTEÚDO -->
-      <div id="content-list" class="grid gap-4">
+      <div id="content-list" class="grid gap-6">
         <p class="text-gray-500 text-center py-8">A carregar dados...</p>
+      </div>
+    </div>
+
+    <!-- MODAL DE EDIÇÃO -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+        <div class="flex justify-between items-center mb-4 border-b pb-3">
+          <h2 class="text-xl font-bold text-gray-800">✏️ Editar Evento</h2>
+          <button onclick="fecharModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+        </div>
+        <form id="edit-form" class="space-y-4">
+          <input type="hidden" id="edit-id" />
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Título</label>
+              <input type="text" id="edit-titulo" required class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Categoria</label>
+              <input type="text" id="edit-categoria" required class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Localização / Recinto</label>
+              <input type="text" id="edit-localizacao" class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Freguesia / Concelho</label>
+              <input type="text" id="edit-freguesia" class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Data Início</label>
+              <input type="date" id="edit-data-inicio" class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Data Fim</label>
+              <input type="date" id="edit-data-fim" class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">URL da Imagem / Cartaz</label>
+            <input type="url" id="edit-imagem" class="w-full p-2.5 border rounded-lg text-sm" placeholder="https://..." />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Contacto / Organizador</label>
+            <input type="text" id="edit-contacto" class="w-full p-2.5 border rounded-lg text-sm" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Descrição Completa</label>
+            <textarea id="edit-descricao" rows="5" class="w-full p-2.5 border rounded-lg text-sm leading-relaxed"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Estado do Anúncio</label>
+            <select id="edit-status" class="w-full p-2.5 border rounded-lg text-sm bg-white">
+              <option value="pendente">⏳ Pendente</option>
+              <option value="aprovado">✅ Aprovado</option>
+              <option value="rejeitado">🚫 Rejeitado / Banido</option>
+            </select>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-4 border-t">
+            <button type="button" onclick="fecharModal()" class="px-4 py-2 border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">Cancelar</button>
+            <button type="submit" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">Guardar Alterações</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -69,15 +144,17 @@ import Layout from '../layouts/Layout.astro';
   const userInfo = document.getElementById('user-info');
   const btnLogout = document.getElementById('btn-logout');
   const contentList = document.getElementById('content-list');
+  const editModal = document.getElementById('edit-modal');
+  const editForm = document.getElementById('edit-form');
 
   let currentTab = 'pendentes';
+  let eventosCache: any[] = [];
 
-  // Verificar Sessão ao Carregar a Página
+  // Verificar Sessão
   async function checkSession() {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session) {
-      // Verificar perfil/role no Supabase
       const { data: perfil } = await supabase
         .from('perfis')
         .select('role')
@@ -88,7 +165,7 @@ import Layout from '../layouts/Layout.astro';
         loginContainer?.classList.add('hidden');
         adminDashboard?.classList.remove('hidden');
         if (userInfo) userInfo.textContent = `Sessão iniciada como: ${session.user.email}`;
-        loadTabContent();
+        refreshDashboard();
         return;
       } else {
         if (loginError) {
@@ -99,15 +176,13 @@ import Layout from '../layouts/Layout.astro';
       }
     }
 
-    // Se não houver sessão ativa
     loginContainer?.classList.remove('hidden');
     adminDashboard?.classList.add('hidden');
   }
 
-  // Executar ao carregar
   checkSession();
 
-  // Submissão do Login
+  // Login
   loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (loginError) loginError.classList.add('hidden');
@@ -127,20 +202,41 @@ import Layout from '../layouts/Layout.astro';
     }
   });
 
-  // Terminar Sessão (Logout)
+  // Logout
   btnLogout?.addEventListener('click', async () => {
     await supabase.auth.signOut();
     window.location.reload();
   });
 
+  // Atualizar Contadores e Conteúdo
+  async function refreshDashboard() {
+    await updateCounters();
+    await loadTabContent();
+  }
+
+  // Atualizar Contadores em Tempo Real
+  async function updateCounters() {
+    const { count: pendentesCount } = await supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('status', 'pendente');
+    const { count: aprovadosCount } = await supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('status', 'aprovado');
+    const { count: rejeitadosCount } = await supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('status', 'rejeitado');
+
+    const elP = document.getElementById('count-pendentes');
+    const elA = document.getElementById('count-aprovados');
+    const elR = document.getElementById('count-rejeitados');
+
+    if (elP) elP.textContent = (pendentesCount || 0).toString();
+    if (elA) elA.textContent = (aprovadosCount || 0).toString();
+    if (elR) elR.textContent = (rejeitadosCount || 0).toString();
+  }
+
   // Alternar Separadores
   document.getElementById('tab-pendentes')?.addEventListener('click', () => switchTab('pendentes'));
   document.getElementById('tab-aprovados')?.addEventListener('click', () => switchTab('aprovados'));
-  document.getElementById('tab-reportes')?.addEventListener('click', () => switchTab('reportes'));
+  document.getElementById('tab-rejeitados')?.addEventListener('click', () => switchTab('rejeitados'));
 
   function switchTab(tab: string) {
     currentTab = tab;
-    ['pendentes', 'aprovados', 'reportes'].forEach(t => {
+    ['pendentes', 'aprovados', 'rejeitados'].forEach(t => {
       const btn = document.getElementById(`tab-${t}`);
       if (t === tab) {
         btn?.classList.add('border-indigo-600', 'text-indigo-600', 'font-semibold');
@@ -153,91 +249,187 @@ import Layout from '../layouts/Layout.astro';
     loadTabContent();
   }
 
-  // Carregar Dados Conforme o Separador
+  // Carregar Eventos Completos
   async function loadTabContent() {
     if (!contentList) return;
     contentList.innerHTML = '<p class="text-gray-500 text-center py-8">A carregar...</p>';
 
-    if (currentTab === 'pendentes' || currentTab === 'aprovados') {
-      const targetStatus = currentTab === 'aprovados' ? 'aprovado' : 'pendente';
-      
-      const { data: eventos, error } = await supabase
-        .from('eventos')
-        .select('*')
-        .eq('status', targetStatus)
-        .order('data_inicio', { ascending: true });
+    const statusMap: Record<string, string> = {
+      'pendentes': 'pendente',
+      'aprovados': 'aprovado',
+      'rejeitados': 'rejeitado'
+    };
 
-      if (error || !eventos || eventos.length === 0) {
-        contentList.innerHTML = `<p class="text-gray-500 text-center py-8">Nenhum evento ${targetStatus}.</p>`;
-        return;
-      }
+    const targetStatus = statusMap[currentTab] || 'pendente';
 
-      contentList.innerHTML = eventos.map(ev => `
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded">${ev.categoria || 'Evento'}</span>
-            <h3 class="font-bold text-lg text-gray-800 mt-1">${ev.titulo}</h3>
-            <p class="text-sm text-gray-600">📍 ${ev.localizacao || ''} (${ev.freguesia_concelho || ''})</p>
-            <p class="text-xs text-gray-400 mt-1">📅 ${ev.data_inicio || ''} até ${ev.data_fim || ''}</p>
+    // Procura eventos e inclui a lista de reportes associados
+    const { data: eventos, error } = await supabase
+      .from('eventos')
+      .select('*, reportes(*)')
+      .eq('status', targetStatus)
+      .order('data_inicio', { ascending: true });
+
+    if (error || !eventos || eventos.length === 0) {
+      contentList.innerHTML = `<p class="text-gray-500 text-center py-8">Nenhum evento no separador "${currentTab}".</p>`;
+      return;
+    }
+
+    eventosCache = eventos;
+
+    contentList.innerHTML = eventos.map(ev => {
+      const reportes = ev.reportes || [];
+      const likes = ev.likes || 0;
+      const dislikes = ev.dislikes || 0;
+
+      return `
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+          <!-- CABEÇALHO -->
+          <div class="flex flex-col sm:flex-row justify-between items-start gap-4 border-b pb-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">${ev.categoria || 'Geral'}</span>
+                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">ID: ${ev.id}</span>
+              </div>
+              <h3 class="font-bold text-xl text-gray-900">${ev.titulo}</h3>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border text-sm text-gray-600">
+              <span>👍 <strong>${likes}</strong></span>
+              <span>👎 <strong>${dislikes}</strong></span>
+              <span class="${reportes.length > 0 ? 'text-red-600 font-bold' : 'text-gray-400'}">🚩 <strong>${reportes.length}</strong> Denúncias</span>
+            </div>
           </div>
-          <div class="flex gap-2 w-full md:w-auto">
-            ${currentTab === 'pendentes' ? `
-              <button onclick="aprovarEvento('${ev.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-medium transition flex-1 md:flex-none">
-                Aprovar
+
+          <!-- DETALHES E IMAGEM -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            ${ev.imagem_url ? `
+              <div class="md:col-span-1">
+                <img src="${ev.imagem_url}" alt="${ev.titulo}" class="w-full h-48 object-cover rounded-lg border shadow-sm" onerror="this.style.display='none'" />
+              </div>
+            ` : ''}
+            
+            <div class="${ev.imagem_url ? 'md:col-span-2' : 'md:col-span-3'} space-y-2 text-sm text-gray-700">
+              <p>📍 <strong>Local:</strong> ${ev.localizacao || 'Não especificado'} (${ev.freguesia_concelho || 'N/D'})</p>
+              <p>📅 <strong>Datas:</strong> ${ev.data_inicio || 'N/D'} até ${ev.data_fim || 'N/D'}</p>
+              ${ev.contacto ? `<p>📞 <strong>Contacto/Organizador:</strong> ${ev.contacto}</p>` : ''}
+              
+              <div class="mt-3 bg-gray-50 p-3 rounded-lg border">
+                <p class="font-semibold text-xs text-gray-500 uppercase mb-1">Descrição Completa:</p>
+                <p class="text-gray-800 whitespace-pre-line text-sm">${ev.descricao || 'Sem descrição fornecida.'}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- LISTA DE DENÚNCIAS SE EXISTIREM -->
+          ${reportes.length > 0 ? `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+              <div class="flex justify-between items-center">
+                <p class="text-xs font-bold text-red-700 uppercase">🚩 Denúncias Registadas sobre este evento:</p>
+                <button onclick="limparDenuncias('${ev.id}')" class="text-xs text-red-600 underline hover:text-red-800">Limpar Denúncias</button>
+              </div>
+              <ul class="list-disc list-inside text-xs text-red-800 space-y-1">
+                ${reportes.map((r: any) => `<li><strong>Motivo:</strong> ${r.motivo || 'Não especificado'}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          <!-- BOTÕES DE AÇÃO -->
+          <div class="flex flex-wrap gap-2 pt-3 border-t justify-end">
+            <button onclick="abrirModalEdicao('${ev.id}')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+              ✏️ Editar
+            </button>
+            
+            ${ev.status !== 'aprovado' ? `
+              <button onclick="alterarStatus('${ev.id}', 'aprovado')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                ✅ Aprovar
               </button>
             ` : ''}
-            <button onclick="eliminarEvento('${ev.id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition flex-1 md:flex-none">
-              Eliminar
+
+            ${ev.status !== 'rejeitado' ? `
+              <button onclick="alterarStatus('${ev.id}', 'rejeitado')" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                🚫 Rejeitar / Banir
+              </button>
+            ` : ''}
+
+            <button onclick="eliminarEvento('${ev.id}')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+              🗑️ Eliminar Definitivamente
             </button>
           </div>
         </div>
-      `).join('');
-    } else if (currentTab === 'reportes') {
-      const { data: reportes, error } = await supabase
-        .from('reportes')
-        .select('*, eventos(titulo, localizacao)')
-        .order('created_at', { ascending: false });
-
-      if (error || !reportes || reportes.length === 0) {
-        contentList.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhuma denúncia registada.</p>';
-        return;
-      }
-
-      contentList.innerHTML = reportes.map(rep => `
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-red-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <span class="text-xs font-bold uppercase text-red-600 bg-red-50 px-2 py-1 rounded">Denúncia</span>
-            <h3 class="font-bold text-gray-800 mt-1">Evento: ${rep.eventos?.titulo || 'Desconhecido'}</h3>
-            <p class="text-sm text-gray-700 bg-gray-50 p-2 rounded mt-2"><strong>Motivo:</strong> ${rep.motivo}</p>
-          </div>
-          <div class="flex gap-2 w-full md:w-auto">
-            <button onclick="resolverReporte('${rep.id}')" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium transition flex-1 md:flex-none">
-              Limpar Denúncia
-            </button>
-            <button onclick="eliminarEvento('${rep.evento_id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition flex-1 md:flex-none">
-              Apagar Evento
-            </button>
-          </div>
-        </div>
-      `).join('');
-    }
+      `;
+    }).join('');
   }
 
-  // Ações de Moderação Globais
-  (window as any).aprovarEvento = async (id: string) => {
-    await supabase.from('eventos').update({ status: 'aprovado' }).eq('id', id);
-    loadTabContent();
+  // Ações Globais de Alteração de Estado
+  (window as any).alterarStatus = async (id: string, novoStatus: string) => {
+    await supabase.from('eventos').update({ status: novoStatus }).eq('id', id);
+    refreshDashboard();
   };
 
   (window as any).eliminarEvento = async (id: string) => {
-    if (confirm('Tem a certeza que deseja eliminar este evento?')) {
+    if (confirm('Tem a certeza que deseja eliminar permanentemente este evento?')) {
       await supabase.from('eventos').delete().eq('id', id);
-      loadTabContent();
+      refreshDashboard();
     }
   };
 
-  (window as any).resolverReporte = async (id: string) => {
-    await supabase.from('reportes').delete().eq('id', id);
-    loadTabContent();
+  (window as any).limparDenuncias = async (eventoId: string) => {
+    if (confirm('Deseja eliminar todas as denúncias associadas a este evento?')) {
+      await supabase.from('reportes').delete().eq('evento_id', eventoId);
+      refreshDashboard();
+    }
   };
+
+  // Funções do Modal de Edição
+  (window as any).abrirModalEdicao = (id: string) => {
+    const ev = eventosCache.find(e => e.id === id);
+    if (!ev) return;
+
+    (document.getElementById('edit-id') as HTMLInputElement).value = ev.id || '';
+    (document.getElementById('edit-titulo') as HTMLInputElement).value = ev.titulo || '';
+    (document.getElementById('edit-categoria') as HTMLInputElement).value = ev.categoria || '';
+    (document.getElementById('edit-localizacao') as HTMLInputElement).value = ev.localizacao || '';
+    (document.getElementById('edit-freguesia') as HTMLInputElement).value = ev.freguesia_concelho || '';
+    (document.getElementById('edit-data-inicio') as HTMLInputElement).value = ev.data_inicio || '';
+    (document.getElementById('edit-data-fim') as HTMLInputElement).value = ev.data_fim || '';
+    (document.getElementById('edit-imagem') as HTMLInputElement).value = ev.imagem_url || '';
+    (document.getElementById('edit-contacto') as HTMLInputElement).value = ev.contacto || '';
+    (document.getElementById('edit-descricao') as HTMLTextAreaElement).value = ev.descricao || '';
+    (document.getElementById('edit-status') as HTMLSelectElement).value = ev.status || 'pendente';
+
+    editModal?.classList.remove('hidden');
+  };
+
+  (window as any).fecharModal = () => {
+    editModal?.classList.add('hidden');
+  };
+
+  // Submissão do Formulário de Edição
+  editForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const id = (document.getElementById('edit-id') as HTMLInputElement).value;
+
+    const payload = {
+      titulo: (document.getElementById('edit-titulo') as HTMLInputElement).value,
+      categoria: (document.getElementById('edit-categoria') as HTMLInputElement).value,
+      localizacao: (document.getElementById('edit-localizacao') as HTMLInputElement).value,
+      freguesia_concelho: (document.getElementById('edit-freguesia') as HTMLInputElement).value,
+      data_inicio: (document.getElementById('edit-data-inicio') as HTMLInputElement).value,
+      data_fim: (document.getElementById('edit-data-fim') as HTMLInputElement).value,
+      imagem_url: (document.getElementById('edit-imagem') as HTMLInputElement).value,
+      contacto: (document.getElementById('edit-contacto') as HTMLInputElement).value,
+      descricao: (document.getElementById('edit-descricao') as HTMLTextAreaElement).value,
+      status: (document.getElementById('edit-status') as HTMLSelectElement).value,
+    };
+
+    const { error } = await supabase.from('eventos').update(payload).eq('id', id);
+
+    if (error) {
+      alert('Erro ao atualizar o evento: ' + error.message);
+    } else {
+      (window as any).fecharModal();
+      refreshDashboard();
+    }
+  });
 </script>
