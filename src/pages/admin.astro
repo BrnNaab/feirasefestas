@@ -159,28 +159,29 @@ import Layout from '../layouts/Layout.astro';
     contentList.innerHTML = '<p class="text-gray-500 text-center py-8">A carregar...</p>';
 
     if (currentTab === 'pendentes' || currentTab === 'aprovados') {
-      const isAprovado = currentTab === 'aprovados';
+      const targetStatus = currentTab === 'aprovados' ? 'aprovado' : 'pendente';
+      
       const { data: eventos, error } = await supabase
         .from('eventos')
         .select('*')
-        .eq('aprovado', isAprovado)
+        .eq('status', targetStatus)
         .order('data_inicio', { ascending: true });
 
       if (error || !eventos || eventos.length === 0) {
-        contentList.innerHTML = `<p class="text-gray-500 text-center py-8">Nenhum evento ${isAprovado ? 'aprovado' : 'pendente'}.</p>`;
+        contentList.innerHTML = `<p class="text-gray-500 text-center py-8">Nenhum evento ${targetStatus}.</p>`;
         return;
       }
 
       contentList.innerHTML = eventos.map(ev => `
         <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded">${ev.categoria}</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded">${ev.categoria || 'Evento'}</span>
             <h3 class="font-bold text-lg text-gray-800 mt-1">${ev.titulo}</h3>
-            <p class="text-sm text-gray-600">📍 ${ev.localizacao} (${ev.freguesia_concelho})</p>
-            <p class="text-xs text-gray-400 mt-1">📅 ${ev.data_inicio} até ${ev.data_fim}</p>
+            <p class="text-sm text-gray-600">📍 ${ev.localizacao || ''} (${ev.freguesia_concelho || ''})</p>
+            <p class="text-xs text-gray-400 mt-1">📅 ${ev.data_inicio || ''} até ${ev.data_fim || ''}</p>
           </div>
           <div class="flex gap-2 w-full md:w-auto">
-            ${!isAprovado ? `
+            ${currentTab === 'pendentes' ? `
               <button onclick="aprovarEvento('${ev.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-medium transition flex-1 md:flex-none">
                 Aprovar
               </button>
@@ -224,7 +225,7 @@ import Layout from '../layouts/Layout.astro';
 
   // Ações de Moderação Globais
   (window as any).aprovarEvento = async (id: string) => {
-    await supabase.from('eventos').update({ aprovado: true }).eq('id', id);
+    await supabase.from('eventos').update({ status: 'aprovado' }).eq('id', id);
     loadTabContent();
   };
 
