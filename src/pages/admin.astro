@@ -45,6 +45,9 @@ import Layout from '../layouts/Layout.astro';
         <button id="tab-aprovados" class="py-3 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">
           ✅ Aprovados (<span id="count-aprovados">0</span>)
         </button>
+        <button id="tab-reportes" class="py-3 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">
+          🚩 Denúncias (<span id="count-reportes">0</span>)
+        </button>
         <button id="tab-rejeitados" class="py-3 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">
           🚫 Rejeitados / Banidos (<span id="count-rejeitados">0</span>)
         </button>
@@ -56,7 +59,7 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </div>
 
-    <!-- MODAL DE EDIÇÃO -->
+    <!-- MODAL DE EDIÇÃO COMPLETA -->
     <div id="edit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
       <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
         <div class="flex justify-between items-center mb-4 border-b pb-3">
@@ -100,13 +103,35 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">URL da Imagem / Cartaz</label>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">URL da Imagem Principal / Cartaz</label>
             <input type="url" id="edit-imagem" class="w-full p-2.5 border rounded-lg text-sm" placeholder="https://..." />
           </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1">Contacto / Organizador</label>
-            <input type="text" id="edit-contacto" class="w-full p-2.5 border rounded-lg text-sm" />
+          <!-- BANNERS / REDES SOCIAIS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+            <div>
+              <label class="block text-xs font-semibold text-blue-900 mb-1">📘 Facebook Post / Banner URL</label>
+              <input type="url" id="edit-facebook" class="w-full p-2.5 border rounded-lg text-sm" placeholder="https://facebook.com/..." />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-pink-900 mb-1">📸 Instagram Post / Banner URL</label>
+              <input type="url" id="edit-instagram" class="w-full p-2.5 border rounded-lg text-sm" placeholder="https://instagram.com/p/..." />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Contacto / Organizador</label>
+              <input type="text" id="edit-contacto" class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Likes 👍</label>
+              <input type="number" id="edit-likes" min="0" class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Dislikes 👎</label>
+              <input type="number" id="edit-dislikes" min="0" class="w-full p-2.5 border rounded-lg text-sm" />
+            </div>
           </div>
 
           <div>
@@ -219,24 +244,28 @@ import Layout from '../layouts/Layout.astro';
     const { count: pendentesCount } = await supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('status', 'pendente');
     const { count: aprovadosCount } = await supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('status', 'aprovado');
     const { count: rejeitadosCount } = await supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('status', 'rejeitado');
+    const { count: reportesCount } = await supabase.from('reportes').select('*', { count: 'exact', head: true });
 
     const elP = document.getElementById('count-pendentes');
     const elA = document.getElementById('count-aprovados');
     const elR = document.getElementById('count-rejeitados');
+    const elRep = document.getElementById('count-reportes');
 
     if (elP) elP.textContent = (pendentesCount || 0).toString();
     if (elA) elA.textContent = (aprovadosCount || 0).toString();
     if (elR) elR.textContent = (rejeitadosCount || 0).toString();
+    if (elRep) elRep.textContent = (reportesCount || 0).toString();
   }
 
   // Alternar Separadores
   document.getElementById('tab-pendentes')?.addEventListener('click', () => switchTab('pendentes'));
   document.getElementById('tab-aprovados')?.addEventListener('click', () => switchTab('aprovados'));
+  document.getElementById('tab-reportes')?.addEventListener('click', () => switchTab('reportes'));
   document.getElementById('tab-rejeitados')?.addEventListener('click', () => switchTab('rejeitados'));
 
   function switchTab(tab: string) {
     currentTab = tab;
-    ['pendentes', 'aprovados', 'rejeitados'].forEach(t => {
+    ['pendentes', 'aprovados', 'reportes', 'rejeitados'].forEach(t => {
       const btn = document.getElementById(`tab-${t}`);
       if (t === tab) {
         btn?.classList.add('border-indigo-600', 'text-indigo-600', 'font-semibold');
@@ -249,11 +278,72 @@ import Layout from '../layouts/Layout.astro';
     loadTabContent();
   }
 
-  // Carregar Eventos Completos
+  // Carregar Eventos e Denúncias
   async function loadTabContent() {
     if (!contentList) return;
     contentList.innerHTML = '<p class="text-gray-500 text-center py-8">A carregar...</p>';
 
+    // SEPARADOR DEDICADO A DENÚNCIAS
+    if (currentTab === 'reportes') {
+      const { data: reportes, error } = await supabase
+        .from('reportes')
+        .select('*, eventos(*)')
+        .order('created_at', { ascending: false });
+
+      if (error || !reportes || reportes.length === 0) {
+        contentList.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhuma denúncia ativa registada.</p>';
+        return;
+      }
+
+      contentList.innerHTML = reportes.map(rep => {
+        const ev = rep.eventos || {};
+        const motivo = rep.motivo || rep.descricao || rep.mensagem || 'Motivo não especificado';
+        const contactoDenunciante = rep.contacto || rep.email || rep.user_email || 'Não facultado';
+
+        return `
+          <div class="bg-white p-6 rounded-xl shadow-sm border border-red-200 space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-red-100 pb-3">
+              <div>
+                <span class="text-xs font-bold uppercase text-red-600 bg-red-50 px-2.5 py-1 rounded">Denúncia # ${rep.id}</span>
+                <h3 class="font-bold text-lg text-gray-900 mt-1">Evento Relacionado: ${ev.titulo || 'Evento Removido/Inexistente'}</h3>
+              </div>
+              <span class="text-xs text-gray-400">📅 ${rep.created_at ? new Date(rep.created_at).toLocaleString('pt-PT') : ''}</span>
+            </div>
+
+            <div class="bg-red-50 p-4 rounded-lg border border-red-100 space-y-2 text-sm text-red-900">
+              <p>🚩 <strong>Motivo da Denúncia:</strong> ${motivo}</p>
+              <p>📞 <strong>Contacto do Denunciante:</strong> ${contactoDenunciante}</p>
+            </div>
+
+            ${ev.id ? `
+              <div class="bg-gray-50 p-4 rounded-lg border text-sm text-gray-700 space-y-1">
+                <p class="font-semibold text-gray-900 mb-1">Dados do Anúncio Denunciado:</p>
+                <p>📍 <strong>Local:</strong> ${ev.localizacao \vert{}\vert{} 'N/D'} (${ev.freguesia_concelho || 'N/D'})</p>
+                <p>📞 <strong>Contacto do Organizador:</strong> ${ev.contacto || 'N/D'}</p>
+                <p>📝 <strong>Descrição:</strong> ${ev.descricao || 'N/D'}</p>
+              </div>
+            ` : ''}
+
+            <div class="flex flex-wrap gap-2 pt-2 justify-end">
+              <button onclick="resolverReporteSingular('${rep.id}')" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                🧹 Eliminar Apenas esta Denúncia
+              </button>
+              ${ev.id ? `
+                <button onclick="alterarStatus('${ev.id}', 'rejeitado')" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                  🚫 Rejeitar/Banir Anúncio
+                </button>
+                <button onclick="eliminarEvento('${ev.id}')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                  🗑️ Apagar Anúncio
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      return;
+    }
+
+    // SEPARADORES DE EVENTOS (Pendentes, Aprovados, Rejeitados)
     const statusMap: Record<string, string> = {
       'pendentes': 'pendente',
       'aprovados': 'aprovado',
@@ -262,7 +352,6 @@ import Layout from '../layouts/Layout.astro';
 
     const targetStatus = statusMap[currentTab] || 'pendente';
 
-    // Procura eventos e inclui a lista de reportes associados
     const { data: eventos, error } = await supabase
       .from('eventos')
       .select('*, reportes(*)')
@@ -286,17 +375,18 @@ import Layout from '../layouts/Layout.astro';
           <!-- CABEÇALHO -->
           <div class="flex flex-col sm:flex-row justify-between items-start gap-4 border-b pb-4">
             <div>
-              <div class="flex items-center gap-2 mb-1">
+              <div class="flex flex-wrap items-center gap-2 mb-1">
                 <span class="text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">${ev.categoria || 'Geral'}</span>
                 <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">ID: ${ev.id}</span>
               </div>
               <h3 class="font-bold text-xl text-gray-900">${ev.titulo}</h3>
             </div>
             
-            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border text-sm text-gray-600">
-              <span>👍 <strong>${likes}</strong></span>
-              <span>👎 <strong>${dislikes}</strong></span>
-              <span class="${reportes.length > 0 ? 'text-red-600 font-bold' : 'text-gray-400'}">🚩 <strong>${reportes.length}</strong> Denúncias</span>
+            <!-- REAÇÕES E DENÚNCIAS -->
+            <div class="flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border text-sm text-gray-700">
+              <span title="Likes do Anúncio">👍 <strong>${likes}</strong></span>
+              <span title="Dislikes do Anúncio">👎 <strong>${dislikes}</strong></span>
+              <span class="${reportes.length > 0 ? 'text-red-600 font-bold' : 'text-gray-400'}" title="Denúncias">🚩 <strong>${reportes.length}</strong> Denúncias</span>
             </div>
           </div>
 
@@ -304,16 +394,24 @@ import Layout from '../layouts/Layout.astro';
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             ${ev.imagem_url ? `
               <div class="md:col-span-1">
-                <img src="${ev.imagem_url}" alt="${ev.titulo}" class="w-full h-48 object-cover rounded-lg border shadow-sm" onerror="this.style.display='none'" />
+                <img src="${ev.imagem_url}" alt="${ev.titulo}" class="w-full h-52 object-cover rounded-lg border shadow-sm" onerror="this.style.display='none'" />
               </div>
             ` : ''}
             
             <div class="${ev.imagem_url ? 'md:col-span-2' : 'md:col-span-3'} space-y-2 text-sm text-gray-700">
               <p>📍 <strong>Local:</strong> ${ev.localizacao || 'Não especificado'} (${ev.freguesia_concelho || 'N/D'})</p>
               <p>📅 <strong>Datas:</strong> ${ev.data_inicio || 'N/D'} até ${ev.data_fim || 'N/D'}</p>
-              ${ev.contacto ? `<p>📞 <strong>Contacto/Organizador:</strong> ${ev.contacto}</p>` : ''}
+              <p>📞 <strong>Contacto/Organizador:</strong> ${ev.contacto || 'Não facultado'}</p>
               
-              <div class="mt-3 bg-gray-50 p-3 rounded-lg border">
+              <!-- LINKS DE REDES SOCIAIS / BANNERS -->
+              ${(ev.facebook_url || ev.instagram_url) ? `
+                <div class="flex flex-wrap gap-3 pt-2 text-xs">
+                  ${ev.facebook_url ? `<a href="${ev.facebook_url}" target="_blank" rel="noopener noreferrer" class="bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1 border border-blue-200">📘 Ver Banner Facebook ↗</a>` : ''}
+                  ${ev.instagram_url ? `<a href="${ev.instagram_url}" target="_blank" rel="noopener noreferrer" class="bg-pink-50 text-pink-700 hover:bg-pink-100 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1 border border-pink-200">📸 Ver Banner Instagram ↗</a>` : ''}
+                </div>
+              ` : ''}
+
+              <div class="mt-3 bg-gray-50 p-3.5 rounded-lg border">
                 <p class="font-semibold text-xs text-gray-500 uppercase mb-1">Descrição Completa:</p>
                 <p class="text-gray-800 whitespace-pre-line text-sm">${ev.descricao || 'Sem descrição fornecida.'}</p>
               </div>
@@ -322,13 +420,18 @@ import Layout from '../layouts/Layout.astro';
 
           <!-- LISTA DE DENÚNCIAS SE EXISTIREM -->
           ${reportes.length > 0 ? `
-            <div class="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
               <div class="flex justify-between items-center">
-                <p class="text-xs font-bold text-red-700 uppercase">🚩 Denúncias Registadas sobre este evento:</p>
-                <button onclick="limparDenuncias('${ev.id}')" class="text-xs text-red-600 underline hover:text-red-800">Limpar Denúncias</button>
+                <p class="text-xs font-bold text-red-700 uppercase">🚩 Denúncias Associadas a este Anúncio:</p>
+                <button onclick="limparDenuncias('${ev.id}')" class="text-xs text-red-600 underline font-semibold hover:text-red-800">Limpar Todas as Denúncias</button>
               </div>
-              <ul class="list-disc list-inside text-xs text-red-800 space-y-1">
-                ${reportes.map((r: any) => `<li><strong>Motivo:</strong> ${r.motivo || 'Não especificado'}</li>`).join('')}
+              <ul class="divide-y divide-red-200/60 text-xs text-red-900">
+                ${reportes.map((r: any) => `
+                  <li class="py-2 space-y-0.5">
+                    <p><strong>Motivo:</strong> ${r.motivo || r.descricao || r.mensagem || 'Não especificado'}</p>
+                    <p class="text-red-700"><strong>Contacto Denunciante:</strong> ${r.contacto || r.email || r.user_email || 'Anónimo'} | <span class="text-gray-500">${r.created_at ? new Date(r.created_at).toLocaleString('pt-PT') : ''}</span></p>
+                  </li>
+                `).join('')}
               </ul>
             </div>
           ` : ''}
@@ -352,7 +455,7 @@ import Layout from '../layouts/Layout.astro';
             ` : ''}
 
             <button onclick="eliminarEvento('${ev.id}')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-              🗑️ Eliminar Definitivamente
+              🗑️ Eliminar
             </button>
           </div>
         </div>
@@ -360,7 +463,7 @@ import Layout from '../layouts/Layout.astro';
     }).join('');
   }
 
-  // Ações Globais de Alteração de Estado
+  // Ações Globais
   (window as any).alterarStatus = async (id: string, novoStatus: string) => {
     await supabase.from('eventos').update({ status: novoStatus }).eq('id', id);
     refreshDashboard();
@@ -380,6 +483,11 @@ import Layout from '../layouts/Layout.astro';
     }
   };
 
+  (window as any).resolverReporteSingular = async (reporteId: string) => {
+    await supabase.from('reportes').delete().eq('id', reporteId);
+    refreshDashboard();
+  };
+
   // Funções do Modal de Edição
   (window as any).abrirModalEdicao = (id: string) => {
     const ev = eventosCache.find(e => e.id === id);
@@ -393,7 +501,11 @@ import Layout from '../layouts/Layout.astro';
     (document.getElementById('edit-data-inicio') as HTMLInputElement).value = ev.data_inicio || '';
     (document.getElementById('edit-data-fim') as HTMLInputElement).value = ev.data_fim || '';
     (document.getElementById('edit-imagem') as HTMLInputElement).value = ev.imagem_url || '';
+    (document.getElementById('edit-facebook') as HTMLInputElement).value = ev.facebook_url || '';
+    (document.getElementById('edit-instagram') as HTMLInputElement).value = ev.instagram_url || '';
     (document.getElementById('edit-contacto') as HTMLInputElement).value = ev.contacto || '';
+    (document.getElementById('edit-likes') as HTMLInputElement).value = ev.likes || 0;
+    (document.getElementById('edit-dislikes') as HTMLInputElement).value = ev.dislikes || 0;
     (document.getElementById('edit-descricao') as HTMLTextAreaElement).value = ev.descricao || '';
     (document.getElementById('edit-status') as HTMLSelectElement).value = ev.status || 'pendente';
 
@@ -418,7 +530,11 @@ import Layout from '../layouts/Layout.astro';
       data_inicio: (document.getElementById('edit-data-inicio') as HTMLInputElement).value,
       data_fim: (document.getElementById('edit-data-fim') as HTMLInputElement).value,
       imagem_url: (document.getElementById('edit-imagem') as HTMLInputElement).value,
+      facebook_url: (document.getElementById('edit-facebook') as HTMLInputElement).value,
+      instagram_url: (document.getElementById('edit-instagram') as HTMLInputElement).value,
       contacto: (document.getElementById('edit-contacto') as HTMLInputElement).value,
+      likes: parseInt((document.getElementById('edit-likes') as HTMLInputElement).value) || 0,
+      dislikes: parseInt((document.getElementById('edit-dislikes') as HTMLInputElement).value) || 0,
       descricao: (document.getElementById('edit-descricao') as HTMLTextAreaElement).value,
       status: (document.getElementById('edit-status') as HTMLSelectElement).value,
     };
